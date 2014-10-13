@@ -3,6 +3,7 @@
 
 #define MAX_LOGMSG_LEN 1024
 #define MAX_LOGEXTRA_LEN 512
+#define MAX_BUFFER_SIZE 1024*1024
 
 #define PROXY_OK 0
 #define PROXY_FATAL_ERROR -1

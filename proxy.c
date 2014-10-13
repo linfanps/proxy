@@ -18,23 +18,50 @@ static int init_proxy_server()
     return PROXY_OK;
 
 }
-static int do_connection(proxy_thread_t* proxy_thread)
+static proxy_thread_t* create_new_thread()
 {
-    
+    proxy_thread_t *thd;
+    if (NULL == (thd = (proxy_thread_t*)malloc(sizeof(proxy_thread_t)))) {
+        log_(LOG_ERROR, "malloc proxy_thread_t thd failed");
+        return NULL;
+    }
+
+    if (NULL == (thd->net = create_new_network()) ) {
+        free(thd);
+        log_(LOG_ERROR, "malloc network_t thd->net failed");
+        return NULL;
+    }
+
+    return thd;
+}
+static int do_connection(proxy_thread_t* thd)
+{
+    send_handshake_packet(thd);  
 }
 /* 线程执行函数*/
 static void *handle_one_connection(void *arg)
 {
-   proxy_thread_t *proxy_thread = (proxy_thread_t*)arg;
-    proxy_thread->id = pthread_self();
-   log_(LOG_INFO, "client %s:%d is handled by thread %d",  proxy_thread->ip,  proxy_thread->port, (unsigned int) proxy_thread->thread_id);
+   proxy_thread_t *thd = (proxy_thread_t*)arg;
+   do_connection(thd);
    pthread_exit(0);
 }
-static int  get_handle_thread(proxy_thread_t *arg)
+static int  get_handle_thread(int fd, struct sockaddr_in *client_addr)
 {
     pthread_t thread_do;
     int error;
-    if (0 != (error = pthread_create(&thread_do, NULL, handle_one_connection, (void *)arg))) {
+    proxy_thread_t *thd = create_new_thread();
+    if (!thd) {
+        log_(LOG_ERROR, "create new thread failed. errno:%d, errmsg:%s", errno, strerror(errno));
+        exit(PROXY_ERROR);
+    }
+    thd->net->client_port = ntohs(client_addr->sin_port);
+    thd->net->fd = fd;
+    snprintf(thd->net->client_ip, MAX_IP_LEN, "%s", inet_ntoa(client_addr->sin_addr));
+    
+    thd->server_status = 2;
+    thd->thread_id = 1;
+    snprintf(thd->scramble, SCRAMBLE_LENGTH+1, "%s","abcdefghijklmnopqrst"); 
+    if (0 != (error = pthread_create(&thread_do, NULL, handle_one_connection, (void *)thd))) {
         log_(LOG_ERROR, "create handle thread failed, errno:%d, errmsg:%s", error, strerror(error));
         return PROXY_ERROR;
     }
@@ -62,11 +89,8 @@ static void handle_client_connection()
             exit(-1);
         }
         log_(LOG_INFO, "client %s:%d connect to server", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
-        proxy_thread->port = ntohs(client_addr.sin_port);
-        proxy_thread->fd = client_socket;
-        snprintf(proxy_thread->ip, MAX_IP_LEN, "%s", inet_ntoa(client_addr.sin_addr));
         
-        get_handle_thread(proxy_thread);
+        get_handle_thread(client_socket, &client_addr);
     }
 }
 int main(int argc, char **argv)

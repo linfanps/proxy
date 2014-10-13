@@ -15,11 +15,14 @@ typedef struct byte_array_t {
 
 typedef struct network_t {
     int fd;
+    char client_ip[MAX_IP_LEN];
+    int client_port;
     byte_array_t *buff;
     int packet_num;
 } network_t;
 
 int create_listen_socket(int port, int backlog);
 int waiting_for_client_to_connect(int fd, struct sockaddr *addr);
+network_t* create_new_network(); 
 int net_write_packet(network_t *net, const uchar *packet, ulong len);
 #endif

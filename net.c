@@ -58,6 +58,30 @@ int waiting_for_client_to_connect(int fd, struct sockaddr *addr)
     }
     return new_connection_fd;
 }
+
+network_t* create_new_network()
+{
+    network_t *net;
+    if (NULL == (net = (network_t*)malloc(sizeof(network_t)))) {
+        log_(LOG_ERROR, "malloc network_t net failed");
+        return NULL;
+    }
+    net->packet_num = 0;
+    if (NULL == (net->buff = (byte_array_t*)malloc(sizeof(byte_array_t)))) {
+        free(net);
+        log_(LOG_ERROR, "malloc byte_array_t buff failed");
+        return NULL;
+    }
+    if (NULL == (net->buff->data = (uchar*)malloc(MAX_BUFFER_SIZE))) {
+        free(net->buff);
+        free(net);
+        log_(LOG_ERROR, "malloc buff->data failed");
+        return NULL;
+    }
+    net->buff->pos = 0;
+    net->buff->size = MAX_BUFFER_SIZE;
+    return net;
+}
 int net_write_packet(network_t *net, const uchar *packet, ulong len)
 {
     uchar header[PACKET_HEADER_LEN];
@@ -76,7 +100,7 @@ int net_write_buff(network_t *net, const uchar *packet, ulong len)
     if (len > length_left) {
         //Todo:
     }
-    memcpy(net->buff->data, packet, len);
+    memcpy(net->buff->data+net->buff->pos, packet, len);
     net->buff->pos += len;
     return PROXY_OK;
 
@@ -85,7 +109,7 @@ int net_flush(network_t *net)
 {
     int ret = PROXY_OK;
     if (net->buff->pos != net->buff->size) {
-        ret = net_real_write(net->fd, net->buff->data, net->buff->size-net->buff->pos);
+        ret = net_real_write(net->fd, net->buff->data, net->buff->pos);
         net->buff->pos = 0; /* 清空 */
     }
     return ret;

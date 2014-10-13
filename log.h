@@ -9,6 +9,7 @@
 #include <string.h>
 #include <sys/time.h>
 #include <time.h>
+#include <errno.h>
 #include "global.h"
 
 #define LOG_DEBUG 1

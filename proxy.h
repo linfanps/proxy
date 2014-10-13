@@ -17,9 +17,6 @@ typedef struct proxy_server_t {
 } proxy_server_t;
 
 typedef struct proxy_thread_t {
-    int fd;
-    char ip[MAX_IP_LEN];
-    int port;
     ulong thread_id;
     short server_status;
     char scramble[SCRAMBLE_LENGTH+1];
